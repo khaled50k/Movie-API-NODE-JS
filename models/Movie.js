@@ -18,15 +18,11 @@ const Movie = mongoose.Schema(
       required: true,
     },
     category: {
-      type: String,
+      type: [String],
       required: true,
     },
     year: {
       type: Number,
-      required: true,
-    },
-    type: {
-      type: [String],
       required: true,
     },
   },
