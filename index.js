@@ -7,6 +7,7 @@ const UploadRoute = require("./routes/upload/UploadRoute");
 const fileupload = require("express-fileupload");
 const Series = require("./models/Series");
 const Movie = require("./routes/Movie/index");
+const Authentication = require("./routes/Authentication/index");
 
 dotenv.config();
 
@@ -92,6 +93,7 @@ app.get("/", async(req, res) => {
 // Route for uploading a movie to Cloudinary
 app.use("/upload", UploadRoute);
 app.use("/movie", Movie);
+app.use("/auth", Authentication);
 //
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
