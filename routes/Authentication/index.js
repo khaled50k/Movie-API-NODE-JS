@@ -30,7 +30,6 @@ router.post("/register", async (req, res) => {
 
     // Save the user to the database
     await user.save();
-
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
     res.status(500).json({ message: "Failed to register user" });
@@ -53,24 +52,25 @@ router.post("/login", async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    console.log(user);
     // Generate JWT
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "10d",
-    });
-
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "10d",
+      }
+    );
+    const exp = new Date().getTime() + 3600000 * 24 * 10;
     // Create a session record
     const session = new Session({
       userId: user._id,
-      exp: new Date().getTime() + 3600000 * 24 * 10, // 1 hour expiration
+      exp: exp, // 1 hour expiration
       session: token,
     });
-
     // Save the session to the database
     await session.save();
-
     // Set the JWT as a cookie in the response
-    res.cookie("SESSION", token, { httpOnly: true });
+    res.cookie("SESSION", token, { httpOnly: true, maxAge: exp });
 
     res.status(200).json({ message: "Logged in successfully" });
   } catch (error) {
