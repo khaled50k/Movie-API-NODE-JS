@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User } = require("../../models/User");
 const { Session } = require("../../models/Session");
+const { verifyTokenAndAdmin } = require("../VerifyToken");
 
 // Register route
 router.post("/register", async (req, res) => {
@@ -77,5 +78,27 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ message: "Failed to log in" });
   }
 });
+// get users route
+router.get("/user/:id?", verifyTokenAndAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id) {
+      // If an ID is provided, find a specific user by ID
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(200).json({ user });
+    } else {
+      // If no ID is provided, fetch all users
+      const users = await User.find({});
+      res.status(200).json({ users });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Failed to retrieve users" });
+  }
+});
+
 
 module.exports = router;
