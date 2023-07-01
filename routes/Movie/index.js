@@ -125,39 +125,43 @@ router.post("/:id/rating", verifyTokenAndAuthorization, async (req, res) => {
 });
 
 // Update a rating of a movie
-router.put("/:id/rating/:ratingId", verifyTokenAndAuthorization, async (req, res) => {
-  try {
-    const { id, ratingId } = req.params;
-    const { rating } = req.body;
+router.put(
+  "/:id/rating/:ratingId",
+  verifyTokenAndAuthorization,
+  async (req, res) => {
+    try {
+      const { id, ratingId } = req.params;
+      const { rating } = req.body;
 
-    const movie = await Movie.findById(id);
+      const movie = await Movie.findById(id);
 
-    if (!movie) {
-      return res.status(404).json({ error: "Movie not found" });
+      if (!movie) {
+        return res.status(404).json({ error: "Movie not found" });
+      }
+
+      const ratingIndex = movie.rating.findIndex(
+        (rating) => rating._id == ratingId
+      );
+
+      if (ratingIndex === -1) {
+        return res.status(404).json({ error: "Rating not found" });
+      }
+
+      movie.rating[ratingIndex].rating = rating;
+
+      const updatedMovie = await movie.save();
+
+      const populatedMovie = await Movie.findById(updatedMovie._id)
+        .populate("category", "name")
+        .populate("rating.user", "email")
+        .populate("comment.user", "email");
+
+      res.status(200).json(populatedMovie);
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    const ratingIndex = movie.rating.findIndex(
-      (rating) => rating._id == ratingId
-    );
-
-    if (ratingIndex === -1) {
-      return res.status(404).json({ error: "Rating not found" });
-    }
-
-    movie.rating[ratingIndex].rating = rating;
-
-    const updatedMovie = await movie.save();
-
-    const populatedMovie = await Movie.findById(updatedMovie._id)
-      .populate("category", "name")
-      .populate("rating.user", "email")
-      .populate("comment.user", "email");
-
-    res.status(200).json(populatedMovie);
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
+);
 
 // Delete a rating from a movie
 router.delete(
@@ -205,7 +209,12 @@ router.post("/:id/comment", verifyTokenAndAuthorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { user, comment } = req.body;
-
+    const { userId } = req.user;
+    if (user !== userId) {
+      return res
+        .status(403)
+        .json({ message: "You are not allowed to add this comment" });
+    }
     const movie = await Movie.findById(id);
 
     if (!movie) {
@@ -228,39 +237,43 @@ router.post("/:id/comment", verifyTokenAndAuthorization, async (req, res) => {
 });
 
 // Update a comment of a movie
-router.put("/:id/comment/:commentId", verifyTokenAndAuthorization, async (req, res) => {
-  try {
-    const { id, commentId } = req.params;
-    const { comment } = req.body;
+router.put(
+  "/:id/comment/:commentId",
+  verifyTokenAndAuthorization,
+  async (req, res) => {
+    try {
+      const { id, commentId } = req.params;
+      const { comment } = req.body;
 
-    const movie = await Movie.findById(id);
+      const movie = await Movie.findById(id);
 
-    if (!movie) {
-      return res.status(404).json({ error: "Movie not found" });
+      if (!movie) {
+        return res.status(404).json({ error: "Movie not found" });
+      }
+
+      const commentIndex = movie.comment.findIndex(
+        (comment) => comment._id == commentId
+      );
+
+      if (commentIndex === -1) {
+        return res.status(404).json({ error: "Comment not found" });
+      }
+
+      movie.comment[commentIndex].comment = comment;
+
+      const updatedMovie = await movie.save();
+
+      const populatedMovie = await Movie.findById(updatedMovie._id)
+        .populate("category", "name")
+        .populate("rating.user", "email")
+        .populate("comment.user", "email");
+
+      res.status(200).json(populatedMovie);
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
     }
-
-    const commentIndex = movie.comment.findIndex(
-      (comment) => comment._id == commentId
-    );
-
-    if (commentIndex === -1) {
-      return res.status(404).json({ error: "Comment not found" });
-    }
-
-    movie.comment[commentIndex].comment = comment;
-
-    const updatedMovie = await movie.save();
-
-    const populatedMovie = await Movie.findById(updatedMovie._id)
-      .populate("category", "name")
-      .populate("rating.user", "email")
-      .populate("comment.user", "email");
-
-    res.status(200).json(populatedMovie);
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
+);
 // Get a comment by its ID
 router.get(
   "/:id/comment/:commentId?",
@@ -298,30 +311,34 @@ router.get(
   }
 );
 // Get a rating by its ID
-router.get("/:id/rating/:ratingId?", verifyTokenAndAuthorization, async (req, res) => {
-  try {
-    const { id, ratingId } = req.params;
+router.get(
+  "/:id/rating/:ratingId?",
+  verifyTokenAndAuthorization,
+  async (req, res) => {
+    try {
+      const { id, ratingId } = req.params;
 
-    const movie = await Movie.findById(id);
-    if (!movie) {
-      return res.status(404).json({ message: "Movie not found" });
-    }
-
-    if (ratingId) {
-      const rating = movie.rating.id(ratingId);
-      if (!rating) {
-        return res.status(404).json({ error: "Rating not found" });
+      const movie = await Movie.findById(id);
+      if (!movie) {
+        return res.status(404).json({ message: "Movie not found" });
       }
 
-      res.status(200).json(rating);
-    } else {
-      const rating = movie.rating;
-      res.status(200).json(rating);
+      if (ratingId) {
+        const rating = movie.rating.id(ratingId);
+        if (!rating) {
+          return res.status(404).json({ error: "Rating not found" });
+        }
+
+        res.status(200).json(rating);
+      } else {
+        const rating = movie.rating;
+        res.status(200).json(rating);
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
     }
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
+);
 
 // Delete a comment from a movie
 router.delete(
