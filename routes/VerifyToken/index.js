@@ -51,7 +51,6 @@ const verifyTokenAndAuthorization = (req, res, next) => {
 const verifyTokenAndAdmin = (req, res, next) => {
   verifyToken(req, res, () => {
     const { role } = req.user;
-
     if (role === "admin") {
       next();
     } else {

@@ -90,7 +90,6 @@ router.post("/login", async (req, res) => {
 router.get("/user/:id?/", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(req.user);
     if (id) {
       // If an ID is provided, find a specific user by ID
       const user = await User.findById(id);
