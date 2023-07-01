@@ -114,7 +114,7 @@ router.delete(
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      const comment = episode.comments.id(commentId);
+      const comment = episode.comment.id(commentId);
       if (!comment) {
         return res.status(404).json({ message: "Comment not found" });
       }
@@ -261,10 +261,10 @@ router.delete(
       if (ratingIndex === -1) {
         return res.status(404).json({ error: "Rating not found" });
       }
-      if (episode.rating.user.toString() !== userId) {
+      if (episode.rating[ratingIndex].user.toString() !== userId) {
         return res
           .status(403)
-          .json({ message: "You are not allowed to update this rating" });
+          .json({ message: "You are not allowed to delete this rating" });
       }
       episode.rating.splice(ratingIndex, 1);
 
