@@ -4,7 +4,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { User } = require("../../models/User");
 const { Session } = require("../../models/Session");
-const { verifyTokenAndAdmin } = require("../VerifyToken");
+const {
+  verifyTokenAndAdmin,
+  getUserId,
+  verifyTokenAndAuthorization,
+} = require("../VerifyToken");
 
 // Register route
 router.post("/register", async (req, res) => {
@@ -53,25 +57,29 @@ router.post("/login", async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    const expirationDuration = 60 * 60 * 24 * 10; // 10 days in seconds
+    const exp = new Date(Date.now() + expirationDuration * 1000);
+
     // Generate JWT
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "10d",
-      }
+      { expiresIn: exp.getTime() }
     );
-    const exp = new Date().getTime() + 3600000 * 24 * 10;
+
     // Create a session record
     const session = new Session({
       userId: user._id,
-      exp: exp, // 1 hour expiration
+      exp: exp,
       session: token,
     });
+
     // Save the session to the database
     await session.save();
+
     // Set the JWT as a cookie in the response
-    res.cookie("SESSION", token, { httpOnly: true, maxAge: exp });
+    res.cookie("SESSION", token, { httpOnly: true, expires: exp });
 
     res.status(200).json({ message: "Logged in successfully" });
   } catch (error) {
@@ -79,10 +87,10 @@ router.post("/login", async (req, res) => {
   }
 });
 // get users route
-router.get("/user/:id?", verifyTokenAndAdmin, async (req, res) => {
+router.get("/user/:id?/", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-
+    console.log(req.user);
     if (id) {
       // If an ID is provided, find a specific user by ID
       const user = await User.findById(id);
@@ -100,5 +108,40 @@ router.get("/user/:id?", verifyTokenAndAdmin, async (req, res) => {
   }
 });
 
+// Get user data by session cookie
+router.get("/user/data/info", verifyTokenAndAuthorization, async (req, res) => {
+  try {
+    const { userId } = req.user;
+
+    const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(200).json({ user });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to retrieve user data" });
+  }
+});
+
+// Logout route
+router.post("/logout", async (req, res) => {
+  try {
+    // Get the session token from the request cookies
+    const sessionToken = req.cookies.SESSION;
+
+    // Update the session record in the database to revoke the session
+    await Session.findOneAndUpdate(
+      { session: sessionToken },
+      { revoked: true }
+    );
+
+    // Clear the session token cookie
+    res.clearCookie("SESSION");
+
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to logout" });
+  }
+});
 
 module.exports = router;

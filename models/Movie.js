@@ -44,7 +44,7 @@ const movieSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    categories: [
+    category: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Category",
@@ -55,8 +55,8 @@ const movieSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    ratings: [ratingSchema],
-    comments: [commentSchema],
+    rating: [ratingSchema],
+    comment: [commentSchema],
   },
   { timestamps: true }
 );

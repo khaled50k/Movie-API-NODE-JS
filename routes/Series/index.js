@@ -15,19 +15,19 @@ router.post(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      episode.comments.push({ user, comment });
+      episode.comment.push({ user, comment });
       await series.save();
 
       res.status(201).json({ message: "Comment added successfully" });
@@ -50,19 +50,19 @@ router.put(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      const commentToUpdate = episode.comments.id(commentId);
+      const commentToUpdate = episode.comment.id(commentId);
       if (!commentToUpdate) {
         return res.status(404).json({ message: "Comment not found" });
       }
@@ -89,24 +89,27 @@ router.delete(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      const commentToRemove = episode.comments.id(commentId);
-      if (!commentToRemove) {
-        return res.status(404).json({ message: "Comment not found" });
+      commentIndex = episode.comment.findIndex(
+        (comment) => comment._id == commentId
+      );
+
+      if (commentIndex === -1) {
+        return res.status(404).json({ error: "Comment not found" });
       }
 
-      commentToRemove.remove();
+      episode.comment.splice(commentIndex, 1);
       await series.save();
 
       res.status(200).json({ message: "Comment deleted successfully" });
@@ -128,19 +131,28 @@ router.post(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      episode.ratings.push({ user, rating });
+      // Check if the user's _id already exists in the ratings array
+      const userAlreadyRated = episode.rating.some((r) => r.user.equals(user));
+
+      if (userAlreadyRated) {
+        return res
+          .status(400)
+          .json({ error: "User already rated this episode" });
+      }
+
+      episode.rating.push({ user, rating });
       await series.save();
 
       res.status(201).json({ message: "Rating added successfully" });
@@ -149,6 +161,7 @@ router.post(
     }
   }
 );
+
 // Update rating for an episode
 router.put(
   "/:seriesId/season/:seasonNumber/episode/:episodeId/rating/:ratingId",
@@ -162,19 +175,19 @@ router.put(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      const ratingToUpdate = episode.ratings.id(ratingId);
+      const ratingToUpdate = episode.rating.id(ratingId);
       if (!ratingToUpdate) {
         return res.status(404).json({ message: "Rating not found" });
       }
@@ -202,24 +215,27 @@ router.delete(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
+      const ratingIndex = episode.rating.findIndex(
+        (rating) => rating._id == ratingId
+      );
 
-      const ratingToRemove = episode.ratings.id(ratingId);
-      if (!ratingToRemove) {
-        return res.status(404).json({ message: "Rating not found" });
+      if (ratingIndex === -1) {
+        return res.status(404).json({ error: "Rating not found" });
       }
 
-      ratingToRemove.remove();
+      episode.rating.splice(ratingIndex, 1);
+
       await series.save();
 
       res.status(200).json({ message: "Rating deleted successfully" });
@@ -231,12 +247,12 @@ router.delete(
 // Add a series
 router.post("/", async (req, res) => {
   try {
-    const { title, story, categories } = req.body;
+    const { title, story, category } = req.body;
 
     const series = new Series({
       title,
       story,
-      categories,
+      category,
     });
 
     await series.save();
@@ -250,14 +266,14 @@ router.post("/", async (req, res) => {
 router.put("/:seriesId", async (req, res) => {
   try {
     const { seriesId } = req.params;
-    const { title, story, categories } = req.body;
+    const { title, story, category } = req.body;
 
     const series = await Series.findByIdAndUpdate(
       seriesId,
       {
         title,
         story,
-        categories,
+        category,
       },
       { new: true }
     );
@@ -287,6 +303,7 @@ router.delete("/:seriesId", async (req, res) => {
     res.status(500).json({ message: "Failed to delete series" });
   }
 });
+
 // Add an episode to a season
 router.post("/:seriesId/season/:seasonNumber/episode", async (req, res) => {
   try {
@@ -298,7 +315,7 @@ router.post("/:seriesId/season/:seasonNumber/episode", async (req, res) => {
       return res.status(404).json({ message: "Series not found" });
     }
 
-    const season = series.seasons.find(
+    const season = series.season.find(
       (season) => season.number === Number(seasonNumber)
     );
     if (!season) {
@@ -308,11 +325,11 @@ router.post("/:seriesId/season/:seasonNumber/episode", async (req, res) => {
     const episode = {
       title,
       url,
-      ratings: [],
-      comments: [],
+      rating: [],
+      comment: [],
     };
 
-    season.episodes.push(episode);
+    season.episode.push(episode);
     await series.save();
 
     res.status(201).json({ message: "Episode added successfully", episode });
@@ -333,14 +350,14 @@ router.put(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
@@ -370,19 +387,20 @@ router.delete(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
 
-      episode.remove();
+      // Remove the episode from the season's episodes array
+      season.episode.pull(episodeId);
       await series.save();
 
       res.status(200).json({ message: "Episode deleted successfully" });
@@ -391,6 +409,7 @@ router.delete(
     }
   }
 );
+
 router.post("/:seriesId/season", async (req, res) => {
   try {
     const seriesId = req.params.seriesId;
@@ -407,11 +426,11 @@ router.post("/:seriesId/season", async (req, res) => {
       title,
       number,
       poster,
-      episodes: [],
+      episode: [],
     };
 
     // Add the season to the series
-    series.seasons.push(season);
+    series.season.push(season);
     await series.save();
 
     res.status(201).json({ message: "Season added successfully", season });
@@ -431,7 +450,7 @@ router.put("/:seriesId/season/:seasonNumber", async (req, res) => {
       return res.status(404).json({ message: "Series not found" });
     }
 
-    const season = series.seasons.find(
+    const season = series.season.find(
       (season) => season.number === Number(seasonNumber)
     );
     if (!season) {
@@ -459,14 +478,15 @@ router.delete("/:seriesId/season/:seasonNumber", async (req, res) => {
       return res.status(404).json({ message: "Series not found" });
     }
 
-    const seasonIndex = series.seasons.findIndex(
+    const season = series.season.find(
       (season) => season.number === Number(seasonNumber)
     );
-    if (seasonIndex === -1) {
+    if (!season) {
       return res.status(404).json({ message: "Season not found" });
     }
 
-    series.seasons.splice(seasonIndex, 1);
+    // Remove the season from the series' seasons array
+    series.season.pull(season._id);
     await series.save();
 
     res.status(200).json({ message: "Season deleted successfully" });
@@ -474,25 +494,30 @@ router.delete("/:seriesId/season/:seasonNumber", async (req, res) => {
     res.status(500).json({ message: "Failed to delete season" });
   }
 });
+
 // Get a series
-router.get("/:seriesId", async (req, res) => {
+router.get("/:seriesId?", async (req, res) => {
   try {
     const { seriesId } = req.params;
-    const series = await Series.findById(seriesId)
-      .populate("categories", "name")
-      .exec();
+    if (seriesId) {
+      const series = await Series.findById(seriesId)
+        .populate("category", "name")
+        .exec();
+      if (!series) {
+        return res.status(404).json({ message: "Series not found" });
+      }
 
-    if (!series) {
-      return res.status(404).json({ message: "Series not found" });
+      res.status(200).json({ series });
+    } else {
+      const series = await Series.find({}).populate("category", "name").exec();
+      res.status(200).json({ series });
     }
-
-    res.status(200).json({ series });
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve series" });
   }
 });
 // Get a season
-router.get("/:seriesId/season/:seasonNumber", async (req, res) => {
+router.get("/:seriesId/season/:seasonNumber?", async (req, res) => {
   try {
     const { seriesId, seasonNumber } = req.params;
 
@@ -500,22 +525,26 @@ router.get("/:seriesId/season/:seasonNumber", async (req, res) => {
     if (!series) {
       return res.status(404).json({ message: "Series not found" });
     }
+    if (seasonNumber) {
+      const season = series.season.find(
+        (season) => season.number === Number(seasonNumber)
+      );
+      if (!season) {
+        return res.status(404).json({ message: "Season not found" });
+      }
 
-    const season = series.seasons.find(
-      (season) => season.number === Number(seasonNumber)
-    );
-    if (!season) {
-      return res.status(404).json({ message: "Season not found" });
+      res.status(200).json({ season });
+    } else {
+      const seasons = series.season;
+      res.status(200).json({ seasons });
     }
-
-    res.status(200).json({ season });
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve season" });
   }
 });
 // Get an episode
 router.get(
-  "/:seriesId/season/:seasonNumber/episodes/:episodeId",
+  "/:seriesId/season/:seasonNumber/episode/:episodeId?",
   async (req, res) => {
     try {
       const { seriesId, seasonNumber, episodeId } = req.params;
@@ -525,19 +554,24 @@ router.get(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
+      if (episodeId) {
+        const episode = season.episode.id(episodeId);
+        if (!episode) {
+          return res.status(404).json({ message: "Episode not found" });
+        }
 
-      const episode = season.episodes.id(episodeId);
-      if (!episode) {
-        return res.status(404).json({ message: "Episode not found" });
+        res.status(200).json({ episode });
+      } else {
+        const episode = season.episode;
+
+        res.status(200).json({ episode });
       }
-
-      res.status(200).json({ episode });
     } catch (error) {
       res.status(500).json({ message: "Failed to retrieve episode" });
     }
@@ -545,7 +579,7 @@ router.get(
 );
 // Get a comment
 router.get(
-  "/:seriesId/season/:seasonNumber/episodes/:episodeId/comments/:commentId",
+  "/:seriesId/season/:seasonNumber/episode/:episodeId/comment/:commentId?",
   async (req, res) => {
     try {
       const { seriesId, seasonNumber, episodeId, commentId } = req.params;
@@ -555,24 +589,29 @@ router.get(
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
+      if (commentId) {
+        const comment = episode.comment.id(commentId);
+        if (!comment) {
+          return res.status(404).json({ message: "Comment not found" });
+        }
 
-      const comment = episode.comments.id(commentId);
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
+        res.status(200).json({ comment });
+      } else {
+        const comment = episode.comment;
+
+        res.status(200).json({ comment });
       }
-
-      res.status(200).json({ comment });
     } catch (error) {
       res.status(500).json({ message: "Failed to retrieve comment" });
     }
@@ -580,40 +619,39 @@ router.get(
 );
 // Get a rating
 router.get(
-  "/:seriesId/seasons/:seasonNumber/episodes/:episodeId/comments/:commentId/ratings/:ratingId",
+  "/:seriesId/season/:seasonNumber/episode/:episodeId/rating/:ratingId?",
   async (req, res) => {
     try {
-      const { seriesId, seasonNumber, episodeId, commentId, ratingId } =
-        req.params;
+      const { seriesId, seasonNumber, episodeId, ratingId } = req.params;
 
       const series = await Series.findById(seriesId);
       if (!series) {
         return res.status(404).json({ message: "Series not found" });
       }
 
-      const season = series.seasons.find(
+      const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
       );
       if (!season) {
         return res.status(404).json({ message: "Season not found" });
       }
 
-      const episode = season.episodes.id(episodeId);
+      const episode = season.episode.id(episodeId);
       if (!episode) {
         return res.status(404).json({ message: "Episode not found" });
       }
+      if (ratingId) {
+        const rating = episode.rating.id(ratingId);
+        if (!rating) {
+          return res.status(404).json({ message: "Rating not found" });
+        }
 
-      const comment = episode.comments.id(commentId);
-      if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
+        res.status(200).json({ rating });
+      } else {
+        const rating = episode.rating;
+
+        res.status(200).json({ rating });
       }
-
-      const rating = comment.ratings.id(ratingId);
-      if (!rating) {
-        return res.status(404).json({ message: "Rating not found" });
-      }
-
-      res.status(200).json({ rating });
     } catch (error) {
       res.status(500).json({ message: "Failed to retrieve rating" });
     }

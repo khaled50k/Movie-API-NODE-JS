@@ -11,6 +11,7 @@ const commentSchema = new mongoose.Schema({
     required: true,
   },
 });
+
 const ratingSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,6 +26,7 @@ const ratingSchema = new mongoose.Schema({
     default: 0,
   },
 });
+
 const episodeSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -34,8 +36,8 @@ const episodeSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  ratings: [ratingSchema],
-  comments: [commentSchema],
+  rating: [ratingSchema],
+  comment: [commentSchema],
 });
 
 const seasonSchema = new mongoose.Schema({
@@ -51,8 +53,8 @@ const seasonSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  ratings: [ratingSchema],
-  episodes: [episodeSchema],
+  rating: [ratingSchema],
+  episode: [episodeSchema],
 });
 
 const seriesSchema = new mongoose.Schema({
@@ -64,16 +66,17 @@ const seriesSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  categories: [
+  category: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
       required: true,
     },
   ],
-  ratings: [ratingSchema],
-  seasons: [seasonSchema],
+  rating: [ratingSchema],
+  season: [seasonSchema],
 });
+
 const Series = mongoose.model("Series", seriesSchema);
 
 module.exports = Series;

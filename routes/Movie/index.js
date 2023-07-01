@@ -8,31 +8,33 @@ const {
   verifyTokenAndAdmin,
 } = require("../VerifyToken/index");
 
-router.get("/", async (req, res) => {
+// Get all movies (admin only)
+router.get("/", verifyTokenAndAdmin, async (req, res) => {
   const title = req.query.title ? req.query.title : "";
   const regex = new RegExp(title, "i"); // case-insensitive search
 
   try {
     const response = await Movie.find({ title: regex })
-      .populate("categories", "name")
-      .populate("ratings.user", "email")
-      .populate("comments.user", "email");
+      .populate("category", "name")
+      .populate("rating.user", "email")
+      .populate("comment.user", "email");
     res.status(200).json(response);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
+// Create a new movie (admin only)
 router.post("/", verifyTokenAndAdmin, async (req, res) => {
   try {
-    const { title, url, poster, story, categories, year } = req.body;
+    const { title, url, poster, story, category, year } = req.body;
 
     const newMovie = new Movie({
       title,
       url,
       poster,
       story,
-      categories,
+      category,
       year,
     });
 
@@ -44,10 +46,11 @@ router.post("/", verifyTokenAndAdmin, async (req, res) => {
   }
 });
 
+// Update a movie (admin only)
 router.put("/:id", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, url, poster, story, categories, year } = req.body;
+    const { title, url, poster, story, category, year } = req.body;
 
     const updatedMovie = await Movie.findByIdAndUpdate(
       id,
@@ -56,11 +59,11 @@ router.put("/:id", verifyTokenAndAdmin, async (req, res) => {
         url,
         poster,
         story,
-        categories,
+        category,
         year,
       },
       { new: true }
-    ).populate("categories", "name");
+    ).populate("category", "name");
 
     if (!updatedMovie) {
       return res.status(404).json({ error: "Movie not found" });
@@ -72,6 +75,7 @@ router.put("/:id", verifyTokenAndAdmin, async (req, res) => {
   }
 });
 
+// Delete a movie (admin only)
 router.delete("/:id", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -88,7 +92,8 @@ router.delete("/:id", verifyTokenAndAdmin, async (req, res) => {
   }
 });
 
-router.post("/:id/ratings", verifyTokenAndAdmin, async (req, res) => {
+// Add a rating to a movie
+router.post("/:id/rating", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { user, rating } = req.body;
@@ -99,28 +104,29 @@ router.post("/:id/ratings", verifyTokenAndAdmin, async (req, res) => {
       return res.status(404).json({ error: "Movie not found" });
     }
 
-    // Check if the user's _id already exists in the ratings array
-    const userAlreadyRated = movie.ratings.some((r) => r.user.equals(user));
+    const userAlreadyRated = movie.rating.some((r) => r.user.equals(user));
 
     if (userAlreadyRated) {
       return res.status(400).json({ error: "User already rated this movie" });
     }
 
-    movie.ratings.push({ user, rating });
+    movie.rating.push({ user, rating });
 
     const updatedMovie = await movie.save();
 
     const populatedMovie = await Movie.findById(updatedMovie._id)
-      .populate("categories", "name")
-      .populate("ratings.user", "email")
-      .populate("comments.user", "email");
+      .populate("category", "name")
+      .populate("rating.user", "email")
+      .populate("comment.user", "email");
 
     res.status(200).json(populatedMovie);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-router.put("/:id/ratings/:ratingId", verifyTokenAndAdmin, async (req, res) => {
+
+// Update a rating of a movie
+router.put("/:id/rating/:ratingId", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id, ratingId } = req.params;
     const { rating } = req.body;
@@ -131,39 +137,7 @@ router.put("/:id/ratings/:ratingId", verifyTokenAndAdmin, async (req, res) => {
       return res.status(404).json({ error: "Movie not found" });
     }
 
-    const ratingIndex = movie.ratings.findIndex((rating) => rating._id == ratingId);
-
-    if (ratingIndex === -1) {
-      return res.status(404).json({ error: "Rating not found" });
-    }
-
-    movie.ratings[ratingIndex].rating = rating;
-
-    const updatedMovie = await movie.save();
-
-    const populatedMovie = await Movie.findById(updatedMovie._id)
-      .populate("categories", "name")
-      .populate("ratings.user", "email")
-      .populate("comments.user", "email");
-
-    res.status(200).json(populatedMovie);
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-
-router.delete("/:id/ratings/:ratingId", verifyTokenAndAdmin, async (req, res) => {
-  try {
-    const { id, ratingId } = req.params;
-
-    const movie = await Movie.findById(id);
-
-    if (!movie) {
-      return res.status(404).json({ error: "Movie not found" });
-    }
-
-    const ratingIndex = movie.ratings.findIndex(
+    const ratingIndex = movie.rating.findIndex(
       (rating) => rating._id == ratingId
     );
 
@@ -171,22 +145,64 @@ router.delete("/:id/ratings/:ratingId", verifyTokenAndAdmin, async (req, res) =>
       return res.status(404).json({ error: "Rating not found" });
     }
 
-    movie.ratings.splice(ratingIndex, 1);
+    movie.rating[ratingIndex].rating = rating;
 
     const updatedMovie = await movie.save();
 
     const populatedMovie = await Movie.findById(updatedMovie._id)
-      .populate("categories", "name")
-      .populate("ratings.user", "email")
-      .populate("comments.user", "email");
+      .populate("category", "name")
+      .populate("rating.user", "email")
+      .populate("comment.user", "email");
 
-      res.status(200).json({ message: "Rating deleted successfully", movie: populatedMovie });
-    } catch (error) {
+    res.status(200).json(populatedMovie);
+  } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-// Update the movie to add comments
-router.post("/:id/comments", verifyTokenAndAdmin, async (req, res) => {
+
+// Delete a rating from a movie
+router.delete(
+  "/:id/rating/:ratingId",
+  verifyTokenAndAdmin,
+  async (req, res) => {
+    try {
+      const { id, ratingId } = req.params;
+
+      const movie = await Movie.findById(id);
+
+      if (!movie) {
+        return res.status(404).json({ error: "Movie not found" });
+      }
+
+      const ratingIndex = movie.rating.findIndex(
+        (rating) => rating._id == ratingId
+      );
+
+      if (ratingIndex === -1) {
+        return res.status(404).json({ error: "Rating not found" });
+      }
+
+      movie.rating.splice(ratingIndex, 1);
+
+      const updatedMovie = await movie.save();
+
+      const populatedMovie = await Movie.findById(updatedMovie._id)
+        .populate("category", "name")
+        .populate("rating.user", "email")
+        .populate("comment.user", "email");
+
+      res.status(200).json({
+        message: "Rating deleted successfully",
+        movie: populatedMovie,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+// Add a comment to a movie
+router.post("/:id/comment", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { user, comment } = req.body;
@@ -197,19 +213,23 @@ router.post("/:id/comments", verifyTokenAndAdmin, async (req, res) => {
       return res.status(404).json({ error: "Movie not found" });
     }
 
-    movie.comments.push({ user, comment });
+    movie.comment.push({ user, comment });
 
     const updatedMovie = await movie.save();
 
-    const populatedMovie = await Movie.findById(updatedMovie._id).populate("categories", "name").populate("ratings.user", "email")
-    .populate("comments.user", "email");
+    const populatedMovie = await Movie.findById(updatedMovie._id)
+      .populate("category", "name")
+      .populate("rating.user", "email")
+      .populate("comment.user", "email");
 
     res.status(200).json(populatedMovie);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-router.put("/:id/comments/:commentId", verifyTokenAndAdmin, async (req, res) => {
+
+// Update a comment of a movie
+router.put("/:id/comment/:commentId", verifyTokenAndAdmin, async (req, res) => {
   try {
     const { id, commentId } = req.params;
     const { comment } = req.body;
@@ -220,55 +240,129 @@ router.put("/:id/comments/:commentId", verifyTokenAndAdmin, async (req, res) => 
       return res.status(404).json({ error: "Movie not found" });
     }
 
-    const commentIndex = movie.comments.findIndex((comment) => comment._id == commentId);
+    const commentIndex = movie.comment.findIndex(
+      (comment) => comment._id == commentId
+    );
 
     if (commentIndex === -1) {
       return res.status(404).json({ error: "Comment not found" });
     }
 
-    movie.comments[commentIndex].comment = comment;
+    movie.comment[commentIndex].comment = comment;
 
     const updatedMovie = await movie.save();
 
     const populatedMovie = await Movie.findById(updatedMovie._id)
-      .populate("categories", "name")
-      .populate("ratings.user", "email")
-      .populate("comments.user", "email");
+      .populate("category", "name")
+      .populate("rating.user", "email")
+      .populate("comment.user", "email");
 
     res.status(200).json(populatedMovie);
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+// Get a comment by its ID
+router.get(
+  "/:id/comment/:commentId?",
+  verifyTokenAndAdmin,
+  async (req, res) => {
+    try {
+      const { id, commentId } = req.params;
 
-router.delete("/:id/comments/:commentId", verifyTokenAndAdmin, async (req, res) => {
+      const movie = await Movie.findById(id);
+      if (!movie) {
+        return res.status(404).json({ message: "Movie not found" });
+      }
+
+      if (!movie) {
+        return res.status(404).json({ error: "Comment not found" });
+      }
+      if (commentId) {
+        const comment = movie.comment.find(
+          (c) => c._id.toString() === commentId
+        );
+
+        if (!comment) {
+          return res.status(404).json({ error: "Comment not found" });
+        }
+
+        res.status(200).json({ comment });
+      } else {
+        const comment = movie.comment;
+
+        res.status(200).json({ comment });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+// Get a rating by its ID
+router.get("/:id/rating/:ratingId?", verifyTokenAndAdmin, async (req, res) => {
   try {
-    const { id, commentId } = req.params;
+    const { id, ratingId } = req.params;
 
     const movie = await Movie.findById(id);
-
     if (!movie) {
-      return res.status(404).json({ error: "Movie not found" });
+      return res.status(404).json({ message: "Movie not found" });
     }
 
-    const commentIndex = movie.comments.findIndex((comment) => comment._id == commentId);
+    if (ratingId) {
+      const rating = movie.rating.id(ratingId);
+      if (!rating) {
+        return res.status(404).json({ error: "Rating not found" });
+      }
 
-    if (commentIndex === -1) {
-      return res.status(404).json({ error: "Comment not found" });
+      res.status(200).json(rating);
+    } else {
+      const rating = movie.rating;
+      res.status(200).json(rating);
     }
-
-    movie.comments.splice(commentIndex, 1);
-
-    const updatedMovie = await movie.save();
-
-    const populatedMovie = await Movie.findById(updatedMovie._id).populate("categories", "name").populate("ratings.user", "email")
-    .populate("comments.user", "email");
-
-    res.status(200).json({ message: "Comment deleted successfully", movie: populatedMovie });
   } catch (error) {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
+// Delete a comment from a movie
+router.delete(
+  "/:id/comment/:commentId",
+  verifyTokenAndAdmin,
+  async (req, res) => {
+    try {
+      const { id, commentId } = req.params;
+
+      const movie = await Movie.findById(id);
+
+      if (!movie) {
+        return res.status(404).json({ error: "Movie not found" });
+      }
+
+      const commentIndex = movie.comment.findIndex(
+        (comment) => comment._id == commentId
+      );
+
+      if (commentIndex === -1) {
+        return res.status(404).json({ error: "Comment not found" });
+      }
+
+      movie.comment.splice(commentIndex, 1);
+
+      const updatedMovie = await movie.save();
+
+      const populatedMovie = await Movie.findById(updatedMovie._id)
+        .populate("category", "name")
+        .populate("rating.user", "email")
+        .populate("comment.user", "email");
+
+      res.status(200).json({
+        message: "Comment deleted successfully",
+        movie: populatedMovie,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
 
 module.exports = router;
