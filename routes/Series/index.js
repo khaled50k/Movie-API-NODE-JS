@@ -74,6 +74,11 @@ router.put(
       const commentToUpdate = episode.comment.id(commentId);
       if (!commentToUpdate) {
         return res.status(404).json({ message: "Comment not found" });
+      } 
+      if (commentToUpdate.user.toString() !== userId) {
+        return res
+        .status(403)
+        .json({ message: "You are not allowed to update this comment" });
       }
       commentToUpdate.comment = comment;
       await series.save();
@@ -189,33 +194,32 @@ router.put(
   async (req, res) => {
     try {
       const { seriesId, seasonNumber, episodeId, ratingId } = req.params;
-      const {  rating } = req.body;
+      const { rating } = req.body;
       const { userId } = req.user;
       const series = await Series.findById(seriesId);
       if (!series) {
         return res.status(404).json({ message: "Series not found" });
       }
-
       const season = series.season.find(
         (season) => season.number === Number(seasonNumber)
-      );
-      if (!season) {
-        return res.status(404).json({ message: "Season not found" });
-      }
-
-      const episode = season.episode.id(episodeId);
-      if (!episode) {
-        return res.status(404).json({ message: "Episode not found" });
-      }
-      if (episode.rating.user.toString() !== userId) {
-        return res
+        );
+        if (!season) {
+          return res.status(404).json({ message: "Season not found" });
+        }
+        
+        const episode = season.episode.id(episodeId);
+        if (!episode) {
+          return res.status(404).json({ message: "Episode not found" });
+        }
+        const ratingToUpdate = episode.rating.id(ratingId);
+        if (!ratingToUpdate) {
+          return res.status(404).json({ message: "Rating not found" });
+        }
+        if (ratingToUpdate.user.toString() !== userId) {
+          return res
           .status(403)
           .json({ message: "You are not allowed to update this rating" });
-      }
-      const ratingToUpdate = episode.rating.id(ratingId);
-      if (!ratingToUpdate) {
-        return res.status(404).json({ message: "Rating not found" });
-      }
+        }
       ratingToUpdate.rating = rating;
       await series.save();
 
