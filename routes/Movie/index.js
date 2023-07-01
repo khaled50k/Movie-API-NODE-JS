@@ -8,8 +8,7 @@ const {
   verifyTokenAndAdmin,
 } = require("../VerifyToken/index");
 
-// Get all movies (admin only)
-router.get("/", verifyTokenAndAdmin, async (req, res) => {
+router.get("/", async (req, res) => {
   const title = req.query.title ? req.query.title : "";
   const regex = new RegExp(title, "i"); // case-insensitive search
 
@@ -93,7 +92,7 @@ router.delete("/:id", verifyTokenAndAdmin, async (req, res) => {
 });
 
 // Add a rating to a movie
-router.post("/:id/rating", verifyTokenAndAdmin, async (req, res) => {
+router.post("/:id/rating", verifyTokenAndAuthorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { user, rating } = req.body;
@@ -126,7 +125,7 @@ router.post("/:id/rating", verifyTokenAndAdmin, async (req, res) => {
 });
 
 // Update a rating of a movie
-router.put("/:id/rating/:ratingId", verifyTokenAndAdmin, async (req, res) => {
+router.put("/:id/rating/:ratingId", verifyTokenAndAuthorization, async (req, res) => {
   try {
     const { id, ratingId } = req.params;
     const { rating } = req.body;
@@ -163,7 +162,7 @@ router.put("/:id/rating/:ratingId", verifyTokenAndAdmin, async (req, res) => {
 // Delete a rating from a movie
 router.delete(
   "/:id/rating/:ratingId",
-  verifyTokenAndAdmin,
+  verifyTokenAndAuthorization,
   async (req, res) => {
     try {
       const { id, ratingId } = req.params;
@@ -202,7 +201,7 @@ router.delete(
 );
 
 // Add a comment to a movie
-router.post("/:id/comment", verifyTokenAndAdmin, async (req, res) => {
+router.post("/:id/comment", verifyTokenAndAuthorization, async (req, res) => {
   try {
     const { id } = req.params;
     const { user, comment } = req.body;
@@ -229,7 +228,7 @@ router.post("/:id/comment", verifyTokenAndAdmin, async (req, res) => {
 });
 
 // Update a comment of a movie
-router.put("/:id/comment/:commentId", verifyTokenAndAdmin, async (req, res) => {
+router.put("/:id/comment/:commentId", verifyTokenAndAuthorization, async (req, res) => {
   try {
     const { id, commentId } = req.params;
     const { comment } = req.body;
@@ -265,7 +264,7 @@ router.put("/:id/comment/:commentId", verifyTokenAndAdmin, async (req, res) => {
 // Get a comment by its ID
 router.get(
   "/:id/comment/:commentId?",
-  verifyTokenAndAdmin,
+  verifyTokenAndAuthorization,
   async (req, res) => {
     try {
       const { id, commentId } = req.params;
@@ -299,7 +298,7 @@ router.get(
   }
 );
 // Get a rating by its ID
-router.get("/:id/rating/:ratingId?", verifyTokenAndAdmin, async (req, res) => {
+router.get("/:id/rating/:ratingId?", verifyTokenAndAuthorization, async (req, res) => {
   try {
     const { id, ratingId } = req.params;
 
@@ -327,7 +326,7 @@ router.get("/:id/rating/:ratingId?", verifyTokenAndAdmin, async (req, res) => {
 // Delete a comment from a movie
 router.delete(
   "/:id/comment/:commentId",
-  verifyTokenAndAdmin,
+  verifyTokenAndAuthorization,
   async (req, res) => {
     try {
       const { id, commentId } = req.params;

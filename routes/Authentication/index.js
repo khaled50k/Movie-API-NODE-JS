@@ -8,6 +8,7 @@ const {
   verifyTokenAndAdmin,
   getUserId,
   verifyTokenAndAuthorization,
+  verifyToken,
 } = require("../VerifyToken");
 
 // Register route
@@ -108,7 +109,7 @@ router.get("/user/:id?/", verifyTokenAndAdmin, async (req, res) => {
 });
 
 // Get user data by session cookie
-router.get("/user/data/info", verifyTokenAndAuthorization, async (req, res) => {
+router.get("/user/data/info", verifyToken, async (req, res) => {
   try {
     const { userId } = req.user;
 
