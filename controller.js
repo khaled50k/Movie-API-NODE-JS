@@ -1,5 +1,6 @@
 const cloudinary=require('./cloudinaryConfig')
 const upload_video = async (req, res) => { try {
+  console.log(req.file);
     var videoFile = req.files.video;
     // Assuming the file path is provided in the request body
     console.log(videoFile);
