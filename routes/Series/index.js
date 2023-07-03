@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const { body, query, param, validationResult } = require("express-validator");
+
 const Series = require("../../models/Series");
 const {
   verifyTokenAndAuthorization,

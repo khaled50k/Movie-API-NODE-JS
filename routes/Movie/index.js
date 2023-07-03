@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { body, query, param, validationResult } = require("express-validator");
 const { Movie } = require("../../models/Movie");
 const {
   getUserId,
@@ -8,20 +9,35 @@ const {
   verifyTokenAndAdmin,
 } = require("../VerifyToken/index");
 
-router.get("/", async (req, res) => {
-  const title = req.query.title ? req.query.title : "";
-  const regex = new RegExp(title, "i"); // case-insensitive search
+router.get(
+  "/",
+  [
+    query("title")
+      .optional()
+      .isString()
+      .withMessage("Title must be a string")
+      .trim()
+      .escape(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const title = req.query.title ? req.query.title : "";
+    const regex = new RegExp(title, "i"); // case-insensitive search
 
-  try {
-    const response = await Movie.find({ title: regex })
-      .populate("category", "name")
-      .populate("rating.user", "email")
-      .populate("comment.user", "email");
-    res.status(200).json(response);
-  } catch (error) {
-    res.status(500).json({ error: "Internal Server Error" });
+    try {
+      const response = await Movie.find({ title: regex })
+        .populate("category", "name")
+        .populate("rating.user", "email")
+        .populate("comment.user", "email");
+      res.status(200).json(response);
+    } catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   }
-});
+);
 
 // Create a new movie (admin only)
 router.post("/", verifyTokenAndAdmin, async (req, res) => {
