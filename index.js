@@ -13,6 +13,8 @@ const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 var csurf = require("csurf");
 const hpp = require("hpp");
+const mongoSanitize = require('express-mongo-sanitize');
+
 dotenv.config();
 
 const port = 5000;
@@ -31,7 +33,10 @@ const authLimiter = rateLimit({
 });
 const app = express();
 var csrfProtection = csurf({ cookie: true });
-app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+// Express 4.x middleware which sanitizes user-supplied data to prevent MongoDB Operator Injection.
+app.use(mongoSanitize());
 // Express middleware to protect against HTTP Parameter Pollution attacks
 app.use(hpp());
 app.use(express.json({ limit: "20kb" })); //set request size limits(request body)
