@@ -11,8 +11,8 @@ const Category = require("./routes/Category/index");
 const Authentication = require("./routes/Authentication/index");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
-var csurf = require('csurf')
-
+var csurf = require("csurf");
+const hpp = require("hpp");
 dotenv.config();
 
 const port = 5000;
@@ -30,7 +30,10 @@ const authLimiter = rateLimit({
   headers: true, // Enable headers configuration
 });
 const app = express();
-var csrfProtection = csurf({ cookie: true })
+var csrfProtection = csurf({ cookie: true });
+app.use(bodyParser.urlencoded());
+// Express middleware to protect against HTTP Parameter Pollution attacks
+app.use(hpp());
 app.use(express.json({ limit: "20kb" })); //set request size limits(request body)
 app.use(cookieParser());
 app.use(fileupload({ useTempFiles: true }));
